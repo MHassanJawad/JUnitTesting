@@ -1,28 +1,8 @@
-/* Copyright (c) 2007-2016 MIT 6.005 course staff, all rights reserved.
- * Redistribution of original or derived work requires permission of course staff.
- */
 package twitter;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * SocialNetwork provides methods that operate on a social network.
- * 
- * A social network is represented by a Map<String, Set<String>> where map[A] is
- * the set of people that person A follows on Twitter, and all people are
- * represented by their Twitter usernames. Users can't follow themselves. If A
- * doesn't follow anybody, then map[A] may be the empty set, or A may not even exist
- * as a key in the map; this is true even if A is followed by other people in the network.
- * Twitter usernames are not case sensitive, so "ernie" is the same as "ERNie".
- * A username should appear at most once as a key in the map or in any given
- * map[A] set.
- * 
- * DO NOT change the method signatures and specifications of these methods, but
- * you should implement their method bodies, and you may add new public or
- * private methods or classes if you like.
- */
 public class SocialNetwork {
 
     /**
@@ -41,7 +21,28 @@ public class SocialNetwork {
      *         either authors or @-mentions in the list of tweets.
      */
     public static Map<String, Set<String>> guessFollowsGraph(List<Tweet> tweets) {
-        throw new RuntimeException("not implemented");
+        Map<String, Set<String>> followsGraph = new HashMap<>();
+
+        for (Tweet tweet : tweets) {
+            String author = tweet.getAuthor().toLowerCase();
+
+            // Use Extract.getMentionedUsers() from the problem set
+            Set<String> mentionedUsers = Extract.getMentionedUsers(List.of(tweet));
+
+            // Remove self-mentions
+            mentionedUsers.remove(author);
+
+            if (!mentionedUsers.isEmpty()) {
+                followsGraph.putIfAbsent(author, new HashSet<>());
+                followsGraph.get(author).addAll(
+                    mentionedUsers.stream()
+                        .map(String::toLowerCase)
+                        .collect(Collectors.toSet())
+                );
+            }
+        }
+
+        return followsGraph;
     }
 
     /**
@@ -54,7 +55,21 @@ public class SocialNetwork {
      *         descending order of follower count.
      */
     public static List<String> influencers(Map<String, Set<String>> followsGraph) {
-        throw new RuntimeException("not implemented");
-    }
+        Map<String, Integer> followerCount = new HashMap<>();
 
+        // Count followers for each mentioned user
+        for (Set<String> followedUsers : followsGraph.values()) {
+            for (String user : followedUsers) {
+                String normalizedUser = user.toLowerCase();
+                followerCount.put(normalizedUser, followerCount.getOrDefault(normalizedUser, 0) + 1);
+            }
+        }
+
+        // Sort users by follower count (descending)
+        return followerCount.entrySet()
+                .stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+    }
 }
